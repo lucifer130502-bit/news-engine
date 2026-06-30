@@ -1,0 +1,24 @@
+app_profile: dev
+
+api_keys:
+  slack_webhook_url: "${SLACK_WEBHOOK_URL}"
+
+llm_gateway:
+  enabled: true
+  base_url: "${LLM_GATEWAY_BASE_URL}"
+  api_key: "${LLM_GATEWAY_API_KEY}"
+
+mysql:
+  host: "${MYSQL_HOST}"
+  port: 27305
+  user: "${MYSQL_USER}"
+  password: "${MYSQL_PASSWORD}"
+  database: "${MYSQL_DATABASE}"
+
+app:
+  crawl_interval_seconds: 300
+  llm_model: "openai/gpt-oss-120b:free"
+
+log:
+  dir: "./logs"
+  file: "ai-news-summarizer-engine.log"

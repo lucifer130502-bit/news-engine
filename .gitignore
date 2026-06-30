@@ -1,0 +1,63 @@
+# Environment variables (CRITICAL - Contains API keys!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Secret/credential files
+new_sql.txt
+new_ai.txgt
+*.secret
+*.credentials
+
+# Docker files
+Dockerfile
+.dockerignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+env/
+.pytest_cache/
+
+# Playwright browsers
+.playwright/
+
+# Logs (exclude log files but keep Python modules)
+*.log
+*.log.*
+logs/*.log
+logs/*.log.*
+
+# Database
+*.db
+*.sqlite
+*.sql
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Testing
+.coverage
+htmlcov/
+.tox/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

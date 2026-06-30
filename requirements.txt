@@ -1,0 +1,9 @@
+httpx
+mysql-connector-python
+openai
+pdfplumber
+playwright
+playwright-stealth
+pydantic
+PyYAML
+requests

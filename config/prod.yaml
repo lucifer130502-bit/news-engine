@@ -1,0 +1,158 @@
+app_profile: prod
+
+api_keys:
+  slack_webhook_url: "${SLACK_WEBHOOK_URL}"
+
+llm_gateway:
+  enabled: true
+  base_url: "https://llm-gateway-api.sam-co.in/v1"
+  api_key: "${LLM_GATEWAY_API_KEY}"
+
+minio:
+  endpoint: "dbminio.samco.net:9000"
+  access_key: "${MINIO_ACCESS_KEY}"
+  secret_key: "${MINIO_SECRET_KEY}"
+  secure: false
+  bucket_pdfs: "samco-ai-news-summarizer"
+  bucket_results: "samco-ai-news-summarizer"
+
+mysql:
+  host: "dbainews.samco.net"
+  port: 3306
+  user: "${MYSQL_USER}"
+  password: "${MYSQL_PASSWORD}"
+  database: "AI_News_Summarizer"
+
+# Quote DB ISIN lookup (samco internal). Primary; falls back to NSE/BSE public endpoints on miss.
+quote_mysql:
+  enabled: true
+  host: "dbquote.samco.net"
+  port: 3306
+  user: "${QUOTE_MYSQL_USER}"
+  password: "${QUOTE_MYSQL_PASSWORD}"
+  database: "quote_data"
+
+# One-shot backfill scripts (backfill_isin.py). Default disabled in shared envs.
+# Flip to true → run script → flip back to false.
+backfill:
+  enabled: false          # ISIN backfill
+  images_enabled: false    # First-page-image backfill (one-time run for stored PDFs missing a thumbnail; flip back to false after)
+  classification_enabled: false  # Re-classify labels + headline backfill
+  symbol_name_enabled: false  # Normalise symbol -> unified symbol name backfill (flip back to false after the one-time run)
+  summary_enabled: false  # Re-summarize rows stored as "Summary not available." (re-fetch PDF + re-run LLM; flip back to false after the one-time run)
+  summary_delete_unrecoverable: false  # also DELETE summary-less rows with no PDF (unrecoverable); flip back to false after the one-time run
+  id_format_enabled: true  # convert existing hyphenated announcement ids to hyphen-less (one-time; runs before crawl loop; flip back to false after)
+
+app:
+  crawl_interval_seconds: 300
+  llm_model: "xai/grok-4-fast-reasoning"
+
+log:
+  dir: "/home/samco/Logs"
+  file: "ai-news-summarizer-engine.log"
+
+sebi:
+  enabled: false
+  interval_minutes: 45
+  list_base_url: "https://www.sebi.gov.in/sebiweb/home/HomeAction.do"
+  sources:
+    circulars: true
+    master_circulars: true
+  departments_allowlist:
+    - "Corporation Finance"
+    - "DDHS"
+    - "MIRSD"
+    - "Legal Affairs"
+    - "Market Regulation"
+    - "Investment Management"
+  subsections_allowlist:
+    - "Circulars"
+    - "Master Circulars"
+    - "Regulations"
+    - "Guidelines"
+  fallback_admin_emails:
+    - "samcomiddleware@gmail.com"
+  minio:
+    pdf_bucket: "sebi-circulars-pdfs"
+    result_bucket: "sebi-circulars-results"
+  llm:
+    model: ""
+    prompt_key: "sebi_compliance_v1"
+  slack:
+    webhook_url: "${SEBI_SLACK_WEBHOOK}"
+    fallback_channel: "#sebi-compliance"
+  email:
+    transport: "smtp"
+    smtp_host: "mailnw.samco.in"
+    smtp_port: 587
+    smtp_user: "data-engineering@samco.in"
+    smtp_pass: "${SEBI_SMTP_PASS}"
+    smtp_use_tls: true
+    from_addr: "data-engineering@samco.in"
+    mode: "per-cycle-digest"
+    fallback_recipients:
+      - "buvan.s@samco.in"
+  delivery:
+    max_retries: 3
+    backoff_seconds: [30, 120, 600]
+
+# First-page-image validation: pixel pre-filter + Gemini Flash for ambiguous renders.
+# Disable use_llm to save cost; pixel check alone still catches pure-blank/dark pages.
+image_validation:
+  enabled: true
+  max_pages: 3
+  use_llm: true
+  model: "xai/grok-4-fast-reasoning"
+
+# Notification inbox publish (Design A). Set notification_base_url + news_base_url and
+# flip enabled to true to deliver announcement cards to the notification inbox.
+notification:
+  enabled: true                                 # log-only: SendAINews POST is commented out, so this only logs [NOTIFY DRY-RUN]
+  notification_base_url: "https://stocknote-notification.sam-co.in"   # stocknote-notification host; /Notification/SendAINews/1.0.0 is appended
+  news_base_url: "https://discoverws.samco.app"   # discover/news prod base (matches discover prod filing-base host)
+  share_base: "https://app.samco.in"            # customer-app base that serves /news/... for the share link
+  user_type: "SAMCO"
+  screen: "STOCK_NOTE"
+  category: "Market Insights"
+  # Per-dimension FORCE-OVERRIDE ids. Leave blank to use the derived value from
+  # filter_map; set one only to pin that dimension to a fixed STOCKNOTES_FILTER_MASTER id.
+  filters:
+    media_id: ""
+    source_id: ""
+    segment_id: ""
+    sentiment_id: ""
+    asset_id: ""
+    event_id: ""
+  # STOCKNOTES_FILTER_MASTER id mappings (see STOCKNOTES_FILTER_MASTER.csv). The six
+  # dimension ids are derived per announcement from these tables. Retune here, no code change.
+  filter_map:
+    source_by_exchange:        # Source
+      NSE: "44"
+      BSE: "45"
+    sentiment:                 # Sentiment (Bullish / Neutral / Bearish)
+      POSITIVE: "10"
+      NEUTRAL: "9"
+      NEGATIVE: "11"
+    sentiment_default: "9"     # Neutral
+    segment: "21"              # Equity
+    asset: "17"                # Equity and Equity Derivatives
+    media_with: "26"           # With Media
+    media_without: "27"        # Without Media
+    event_default: "30"        # Updates and Clarifications (unmatched labels fall here)
+    event_by_label:            # classification label substring -> Event id (first match wins)
+      - { match: "shareholder meeting", id: "28" }
+      - { match: "annual general",      id: "28" }
+      - { match: "agm",                 id: "28" }
+      - { match: "board meeting",       id: "29" }
+      - { match: "financial result",    id: "31" }
+      - { match: "result",              id: "31" }
+      - { match: "corporate action",    id: "32" }
+      - { match: "dividend",            id: "32" }
+      - { match: "bonus",               id: "32" }
+      - { match: "split",               id: "32" }
+      - { match: "buyback",             id: "32" }
+      - { match: "buy-back",            id: "32" }
+      - { match: "listing",             id: "33" }
+      - { match: "update",              id: "30" }
+      - { match: "clarification",       id: "30" }
+  timeout_seconds: 10
