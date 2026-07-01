@@ -32,11 +32,11 @@ schema_checked = False
 CREATE_ANNOUNCEMENTS_TABLE = """
 CREATE TABLE IF NOT EXISTS announcements (
     id VARCHAR(64) PRIMARY KEY,
-    company VARCHAR(512),
+    company VARCHAR(255),
     symbol VARCHAR(64),
     isin VARCHAR(20),
     exchange VARCHAR(20),
-    announcement_type VARCHAR(512),
+    announcement_type VARCHAR(255),
     classification_label VARCHAR(512) DEFAULT 'Other Announcement',
     date DATE,
     pdf_url TEXT,
