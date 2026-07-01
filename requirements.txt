@@ -1,3 +1,4 @@
+aiohttp
 httpx
 mysql-connector-python
 openai
